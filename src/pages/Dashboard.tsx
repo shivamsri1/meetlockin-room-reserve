@@ -35,23 +35,30 @@ const Dashboard = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { data: bookingsData, loading: bookingsLoading, refetch: refetchBookings } = useBookings();
-  const { data: roomsData } = useRooms();
+  const { data: bookingsResponse, loading: bookingsLoading, refetch: refetchBookings } = useBookings();
+  const { data: roomsResponse } = useRooms();
   const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // Map room names to bookings
+  console.log('Bookings response:', bookingsResponse);
+  console.log('Rooms response:', roomsResponse);
+
+  // Extract arrays from API responses and map room names to bookings
   const bookings = React.useMemo(() => {
-    if (!bookingsData || !roomsData) return [];
-    return bookingsData.map((booking: any) => {
-      const room = roomsData.find((r: any) => r.id === booking.room_id);
+    if (!bookingsResponse || !roomsResponse) return [];
+    
+    const bookingsArray = bookingsResponse.bookings_all || [];
+    const roomsArray = roomsResponse.rooms_all || [];
+    
+    return bookingsArray.map((booking: any) => {
+      const room = roomsArray.find((r: any) => r.id === booking.room_id);
       return {
         ...booking,
         room_name: room?.room_name || 'Unknown Room'
       };
     });
-  }, [bookingsData, roomsData]);
+  }, [bookingsResponse, roomsResponse]);
 
   useEffect(() => {
     let filtered = bookings;
@@ -160,7 +167,7 @@ const Dashboard = () => {
 
   const pendingCount = bookings.filter(b => b.approval_status === 'pending').length;
   const approvedCount = bookings.filter(b => b.approval_status === 'approved').length;
-  const totalRooms = roomsData?.length || 0;
+  const totalRooms = roomsResponse?.rooms_all?.length || 0;
 
   return (
     <div className="p-6 space-y-6">
