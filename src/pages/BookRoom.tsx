@@ -27,7 +27,7 @@ const BookRoom = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { data: rooms } = useRooms();
+  const { data: roomsResponse } = useRooms();
   
   const [formData, setFormData] = useState({
     project_name: '',
@@ -82,7 +82,8 @@ const BookRoom = () => {
     }
   };
 
-  const selectedRoom = rooms?.find(room => room.id.toString() === formData.room_id);
+  const rooms = roomsResponse?.rooms_all || [];
+  const selectedRoom = rooms.find(room => room.id.toString() === formData.room_id);
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -152,7 +153,7 @@ const BookRoom = () => {
                       <SelectValue placeholder="Select a conference room" />
                     </SelectTrigger>
                     <SelectContent>
-                      {rooms?.map((room) => (
+                      {rooms.map((room) => (
                         <SelectItem key={room.id} value={room.id.toString()}>
                           <div className="flex items-center justify-between w-full">
                             <span>{room.room_name}</span>
@@ -266,7 +267,6 @@ const BookRoom = () => {
           </Card>
         </div>
 
-        {/* Booking Summary */}
         <div className="space-y-6">
           <Card>
             <CardHeader>

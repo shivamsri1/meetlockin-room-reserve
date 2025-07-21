@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { apiService } from '@/lib/api';
 import { useRooms } from '@/hooks/useApi';
@@ -12,12 +13,14 @@ import { useToast } from '@/hooks/use-toast';
 
 
 const RoomManagement = () => {
-  const { data: rooms, loading, refetch } = useRooms();
+  const { data: roomsResponse, loading, refetch } = useRooms();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<any>(null);
   const [newRoom, setNewRoom] = useState({ room_name: '', capacity: '' });
   const { toast } = useToast();
+
+  const rooms = roomsResponse?.rooms_all || [];
 
   const handleAddRoom = async () => {
     if (!newRoom.room_name.trim()) {
@@ -30,7 +33,7 @@ const RoomManagement = () => {
     }
 
     try {
-      const id = rooms ? Math.max(...rooms.map(r => r.id)) + 1 : 1;
+      const id = rooms.length > 0 ? Math.max(...rooms.map(r => r.id)) + 1 : 1;
       await apiService.createRoom({
         id,
         room_name: newRoom.room_name,
@@ -87,7 +90,7 @@ const RoomManagement = () => {
 
   const handleDeleteRoom = async (roomId: number) => {
     try {
-      const room = rooms?.find(r => r.id === roomId);
+      const room = rooms.find(r => r.id === roomId);
       await apiService.deleteRoom(roomId);
       await refetch();
       
@@ -173,7 +176,7 @@ const RoomManagement = () => {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{rooms?.length || 0}</div>
+            <div className="text-2xl font-bold">{rooms.length || 0}</div>
             <p className="text-xs text-muted-foreground">
               Conference rooms available
             </p>
@@ -187,7 +190,7 @@ const RoomManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {rooms?.reduce((sum, room) => sum + (room.capacity || 0), 0) || 0}
+              {rooms.reduce((sum, room) => sum + (room.capacity || 0), 0) || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               People across all rooms
@@ -202,7 +205,7 @@ const RoomManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {rooms && rooms.length > 0 ? Math.round(rooms.reduce((sum, room) => sum + (room.capacity || 0), 0) / rooms.length) : 0}
+              {rooms.length > 0 ? Math.round(rooms.reduce((sum, room) => sum + (room.capacity || 0), 0) / rooms.length) : 0}
             </div>
             <p className="text-xs text-muted-foreground">
               People per room
@@ -233,7 +236,7 @@ const RoomManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rooms?.map((room) => (
+                {rooms.map((room) => (
                   <TableRow key={room.id}>
                     <TableCell className="font-medium">{room.room_name}</TableCell>
                     <TableCell>{room.capacity || 0} people</TableCell>
@@ -262,7 +265,7 @@ const RoomManagement = () => {
             </Table>
           </div>
 
-          {(!rooms || rooms.length === 0) && !loading && (
+          {rooms.length === 0 && !loading && (
             <div className="text-center py-8">
               <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium">No rooms found</h3>

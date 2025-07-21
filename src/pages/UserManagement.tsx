@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { apiService } from '@/lib/api';
 import { useUsers } from '@/hooks/useApi';
@@ -14,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 
 
 const UserManagement = () => {
-  const { data: users, loading, refetch } = useUsers();
+  const { data: usersResponse, loading, refetch } = useUsers();
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -28,8 +29,9 @@ const UserManagement = () => {
   });
   const { toast } = useToast();
 
+  const users = usersResponse?.users_all || [];
+
   React.useEffect(() => {
-    if (!users) return;
     const filtered = users.filter(user =>
       user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -48,7 +50,7 @@ const UserManagement = () => {
     }
 
     // Check if email already exists
-    if (users?.some(user => user.email === newUser.email)) {
+    if (users.some(user => user.email === newUser.email)) {
       toast({
         title: "Email already exists",
         description: "A user with this email already exists.",
@@ -87,7 +89,7 @@ const UserManagement = () => {
     }
 
     // Check if email already exists (excluding current user)
-    if (users?.some(user => user.email === editingUser.email && user.id !== editingUser.id)) {
+    if (users.some(user => user.email === editingUser.email && user.id !== editingUser.id)) {
       toast({
         title: "Email already exists",
         description: "Another user with this email already exists.",
@@ -116,10 +118,10 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = async (userId: number) => {
-    const user = users?.find(u => u.id === userId);
+    const user = users.find(u => u.id === userId);
     
     // Prevent deleting the last admin
-    if (user?.is_admin && users?.filter(u => u.is_admin).length === 1) {
+    if (user?.is_admin && users.filter(u => u.is_admin).length === 1) {
       toast({
         title: "Cannot delete",
         description: "Cannot delete the last administrator.",
@@ -150,8 +152,8 @@ const UserManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const adminCount = users?.filter(u => u.is_admin).length || 0;
-  const employeeCount = users?.filter(u => !u.is_admin).length || 0;
+  const adminCount = users.filter(u => u.is_admin).length || 0;
+  const employeeCount = users.filter(u => !u.is_admin).length || 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -235,7 +237,7 @@ const UserManagement = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users?.length || 0}</div>
+            <div className="text-2xl font-bold">{users.length || 0}</div>
             <p className="text-xs text-muted-foreground">
               Registered users
             </p>
