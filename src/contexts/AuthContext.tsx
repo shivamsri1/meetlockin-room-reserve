@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/lib/api';
+import { User, apiService } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -34,18 +34,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      // For demo purposes, we'll simulate login success
-      // In a real app, you'd call the API and get user data
-      const mockUser: User = {
-        id: 1,
-        full_name: email === 'admin@company.com' ? 'Admin User' : 'Employee User',
-        email,
-        is_admin: email === 'admin@company.com'
-      };
+      const response = await apiService.login({ email, password });
       
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
+      // Extract user data from API response
+      if (response && (response.user || response.id)) {
+        const userData = response.user || response;
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
+      console.error('Login failed:', error);
       throw new Error('Login failed. Please check your credentials.');
     }
   };

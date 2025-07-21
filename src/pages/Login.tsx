@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Clock, MapPin } from 'lucide-react';
+import { apiService } from '@/lib/api';
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -63,7 +64,15 @@ const Login = () => {
 
     setIsLoading(true);
     try {
-      // For demo, auto-login after registration
+      // Create user account via API
+      await apiService.register({
+        full_name: registerData.full_name,
+        email: registerData.email,
+        password: registerData.password,
+        is_admin: false // Default to non-admin for registration
+      });
+
+      // Auto-login after successful registration
       await login(registerData.email, registerData.password);
       toast({
         title: "Account created successfully",

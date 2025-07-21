@@ -10,6 +10,7 @@ export interface User {
 export interface Room {
   id: number;
   room_name: string;
+  capacity?: number; // Optional field for display purposes
 }
 
 export interface Booking {
@@ -44,6 +45,11 @@ export interface CreateBookingRequest {
   start_time: string;
   end_time: string;
   booked_by: string;
+}
+
+export interface LoginResponse {
+  user: User;
+  message?: string;
 }
 
 class ApiService {

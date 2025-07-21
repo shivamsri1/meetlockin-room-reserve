@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiService } from '@/lib/api';
+import { useRooms } from '@/hooks/useApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,14 +15,6 @@ import { Calendar as CalendarIcon, Clock, MapPin, User, FileText } from 'lucide-
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-// Mock room data
-const mockRooms = [
-  { id: 1, room_name: 'Conference Room A', capacity: 10 },
-  { id: 2, room_name: 'Meeting Room B', capacity: 6 },
-  { id: 3, room_name: 'Board Room', capacity: 15 },
-  { id: 4, room_name: 'Training Room', capacity: 20 },
-  { id: 5, room_name: 'Small Meeting Room', capacity: 4 },
-];
 
 const timeSlots = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
@@ -33,6 +27,7 @@ const BookRoom = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { data: rooms } = useRooms();
   
   const [formData, setFormData] = useState({
     project_name: '',
@@ -60,8 +55,15 @@ const BookRoom = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await apiService.createBooking({
+        project_name: formData.project_name,
+        manager_name: formData.manager_name,
+        room_id: parseInt(formData.room_id),
+        booking_date: formData.booking_date!.toISOString().split('T')[0],
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        booked_by: user?.email || '',
+      });
       
       toast({
         title: "Booking submitted",
@@ -80,7 +82,7 @@ const BookRoom = () => {
     }
   };
 
-  const selectedRoom = mockRooms.find(room => room.id.toString() === formData.room_id);
+  const selectedRoom = rooms?.find(room => room.id.toString() === formData.room_id);
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -150,13 +152,15 @@ const BookRoom = () => {
                       <SelectValue placeholder="Select a conference room" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockRooms.map((room) => (
+                      {rooms?.map((room) => (
                         <SelectItem key={room.id} value={room.id.toString()}>
                           <div className="flex items-center justify-between w-full">
                             <span>{room.room_name}</span>
-                            <span className="text-sm text-muted-foreground ml-2">
-                              Capacity: {room.capacity}
-                            </span>
+                            {room.capacity && (
+                              <span className="text-sm text-muted-foreground ml-2">
+                                Capacity: {room.capacity}
+                              </span>
+                            )}
                           </div>
                         </SelectItem>
                       ))}
@@ -320,9 +324,11 @@ const BookRoom = () => {
                 <div className="pt-4 border-t">
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Room Details</h4>
-                    <div className="text-sm text-muted-foreground">
-                      Capacity: {selectedRoom.capacity} people
-                    </div>
+                    {selectedRoom.capacity && (
+                      <div className="text-sm text-muted-foreground">
+                        Capacity: {selectedRoom.capacity} people
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

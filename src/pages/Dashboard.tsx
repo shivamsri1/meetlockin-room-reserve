@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiService } from '@/lib/api';
+import { useBookings, useRooms } from '@/hooks/useApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,54 +30,28 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Mock data - in real app, this would come from API
-const mockBookings = [
-  {
-    id: 1,
-    project_name: 'Q4 Planning',
-    manager_name: 'John Smith',
-    room_id: 1,
-    room_name: 'Conference Room A',
-    booking_date: '2024-01-25',
-    start_time: '09:00',
-    end_time: '10:00',
-    booked_by: 'alice@company.com',
-    approval_status: 'pending'
-  },
-  {
-    id: 2,
-    project_name: 'Team Standup',
-    manager_name: 'Jane Doe',
-    room_id: 2,
-    room_name: 'Meeting Room B',
-    booking_date: '2024-01-25',
-    start_time: '11:00',
-    end_time: '12:00',
-    booked_by: 'bob@company.com',
-    approval_status: 'approved'
-  },
-  {
-    id: 3,
-    project_name: 'Client Presentation',
-    manager_name: 'Mike Johnson',
-    room_id: 1,
-    room_name: 'Conference Room A',
-    booking_date: '2024-01-26',
-    start_time: '14:00',
-    end_time: '16:00',
-    booked_by: 'charlie@company.com',
-    approval_status: 'rejected'
-  },
-];
 
 const Dashboard = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [bookings, setBookings] = useState(mockBookings);
-  const [filteredBookings, setFilteredBookings] = useState(mockBookings);
+  const { data: bookingsData, loading: bookingsLoading, refetch: refetchBookings } = useBookings();
+  const { data: roomsData } = useRooms();
+  const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Map room names to bookings
+  const bookings = React.useMemo(() => {
+    if (!bookingsData || !roomsData) return [];
+    return bookingsData.map((booking: any) => {
+      const room = roomsData.find((r: any) => r.id === booking.room_id);
+      return {
+        ...booking,
+        room_name: room?.room_name || 'Unknown Room'
+      };
+    });
+  }, [bookingsData, roomsData]);
 
   useEffect(() => {
     let filtered = bookings;
@@ -115,49 +91,76 @@ const Dashboard = () => {
     }
   };
 
-  const handleApprove = (bookingId: number) => {
-    setBookings(prev => 
-      prev.map(booking => 
-        booking.id === bookingId 
-          ? { ...booking, approval_status: 'approved' }
-          : booking
-      )
-    );
-    toast({
-      title: "Booking approved",
-      description: "The booking has been approved successfully.",
-    });
+  const handleApprove = async (bookingId: number) => {
+    try {
+      const booking = bookings.find(b => b.id === bookingId);
+      if (booking) {
+        await apiService.updateBooking(bookingId, {
+          ...booking,
+          approval_status: 'approved'
+        });
+        await refetchBookings();
+        toast({
+          title: "Booking approved",
+          description: "The booking has been approved successfully.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to approve booking. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleReject = (bookingId: number) => {
-    setBookings(prev => 
-      prev.map(booking => 
-        booking.id === bookingId 
-          ? { ...booking, approval_status: 'rejected' }
-          : booking
-      )
-    );
-    toast({
-      title: "Booking rejected",
-      description: "The booking has been rejected.",
-    });
+  const handleReject = async (bookingId: number) => {
+    try {
+      const booking = bookings.find(b => b.id === bookingId);
+      if (booking) {
+        await apiService.updateBooking(bookingId, {
+          ...booking,
+          approval_status: 'rejected'
+        });
+        await refetchBookings();
+        toast({
+          title: "Booking rejected",
+          description: "The booking has been rejected.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reject booking. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEdit = (bookingId: number) => {
     navigate(`/edit-booking/${bookingId}`);
   };
 
-  const handleDelete = (bookingId: number) => {
-    setBookings(prev => prev.filter(booking => booking.id !== bookingId));
-    toast({
-      title: "Booking deleted",
-      description: "The booking has been deleted successfully.",
-    });
+  const handleDelete = async (bookingId: number) => {
+    try {
+      await apiService.deleteBooking(bookingId);
+      await refetchBookings();
+      toast({
+        title: "Booking deleted",
+        description: "The booking has been deleted successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete booking. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const pendingCount = bookings.filter(b => b.approval_status === 'pending').length;
   const approvedCount = bookings.filter(b => b.approval_status === 'approved').length;
-  const totalRooms = 5; // Mock data
+  const totalRooms = roomsData?.length || 0;
 
   return (
     <div className="p-6 space-y-6">

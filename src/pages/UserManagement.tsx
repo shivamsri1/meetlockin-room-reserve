@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { apiService } from '@/lib/api';
+import { useUsers } from '@/hooks/useApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,18 +12,10 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Edit, Trash2, Users, UserCheck, Shield, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Mock user data
-const mockUsersData = [
-  { id: 1, full_name: 'Admin User', email: 'admin@company.com', is_admin: true },
-  { id: 2, full_name: 'John Smith', email: 'john@company.com', is_admin: false },
-  { id: 3, full_name: 'Jane Doe', email: 'jane@company.com', is_admin: false },
-  { id: 4, full_name: 'Mike Johnson', email: 'mike@company.com', is_admin: false },
-  { id: 5, full_name: 'Sarah Wilson', email: 'sarah@company.com', is_admin: false },
-];
 
 const UserManagement = () => {
-  const [users, setUsers] = useState(mockUsersData);
-  const [filteredUsers, setFilteredUsers] = useState(mockUsersData);
+  const { data: users, loading, refetch } = useUsers();
+  const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -35,6 +29,7 @@ const UserManagement = () => {
   const { toast } = useToast();
 
   React.useEffect(() => {
+    if (!users) return;
     const filtered = users.filter(user =>
       user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -42,7 +37,7 @@ const UserManagement = () => {
     setFilteredUsers(filtered);
   }, [users, searchTerm]);
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!newUser.full_name.trim() || !newUser.email.trim() || !newUser.password.trim()) {
       toast({
         title: "Missing information",
@@ -53,7 +48,7 @@ const UserManagement = () => {
     }
 
     // Check if email already exists
-    if (users.some(user => user.email === newUser.email)) {
+    if (users?.some(user => user.email === newUser.email)) {
       toast({
         title: "Email already exists",
         description: "A user with this email already exists.",
@@ -62,25 +57,26 @@ const UserManagement = () => {
       return;
     }
 
-    const id = Math.max(...users.map(u => u.id)) + 1;
-    const user = {
-      id,
-      full_name: newUser.full_name,
-      email: newUser.email,
-      is_admin: newUser.is_admin,
-    };
-
-    setUsers(prev => [...prev, user]);
-    setNewUser({ full_name: '', email: '', password: '', is_admin: false });
-    setIsAddDialogOpen(false);
-    
-    toast({
-      title: "User added",
-      description: `${user.full_name} has been added successfully.`,
-    });
+    try {
+      await apiService.register(newUser);
+      await refetch();
+      setNewUser({ full_name: '', email: '', password: '', is_admin: false });
+      setIsAddDialogOpen(false);
+      
+      toast({
+        title: "User added",
+        description: `${newUser.full_name} has been added successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add user. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleEditUser = () => {
+  const handleEditUser = async () => {
     if (!editingUser?.full_name.trim() || !editingUser?.email.trim()) {
       toast({
         title: "Missing information",
@@ -91,7 +87,7 @@ const UserManagement = () => {
     }
 
     // Check if email already exists (excluding current user)
-    if (users.some(user => user.email === editingUser.email && user.id !== editingUser.id)) {
+    if (users?.some(user => user.email === editingUser.email && user.id !== editingUser.id)) {
       toast({
         title: "Email already exists",
         description: "Another user with this email already exists.",
@@ -100,28 +96,30 @@ const UserManagement = () => {
       return;
     }
 
-    setUsers(prev => 
-      prev.map(user => 
-        user.id === editingUser.id 
-          ? editingUser
-          : user
-      )
-    );
-    
-    setIsEditDialogOpen(false);
-    setEditingUser(null);
-    
-    toast({
-      title: "User updated",
-      description: `${editingUser.full_name} has been updated successfully.`,
-    });
+    try {
+      await apiService.updateUser(editingUser.id, editingUser);
+      await refetch();
+      setIsEditDialogOpen(false);
+      setEditingUser(null);
+      
+      toast({
+        title: "User updated",
+        description: `${editingUser.full_name} has been updated successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update user. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteUser = (userId: number) => {
-    const user = users.find(u => u.id === userId);
+  const handleDeleteUser = async (userId: number) => {
+    const user = users?.find(u => u.id === userId);
     
     // Prevent deleting the last admin
-    if (user?.is_admin && users.filter(u => u.is_admin).length === 1) {
+    if (user?.is_admin && users?.filter(u => u.is_admin).length === 1) {
       toast({
         title: "Cannot delete",
         description: "Cannot delete the last administrator.",
@@ -130,12 +128,21 @@ const UserManagement = () => {
       return;
     }
 
-    setUsers(prev => prev.filter(user => user.id !== userId));
-    
-    toast({
-      title: "User deleted",
-      description: `${user?.full_name} has been deleted successfully.`,
-    });
+    try {
+      await apiService.deleteUser(userId);
+      await refetch();
+      
+      toast({
+        title: "User deleted",
+        description: `${user?.full_name} has been deleted successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete user. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const openEditDialog = (user: any) => {
@@ -143,8 +150,8 @@ const UserManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const adminCount = users.filter(u => u.is_admin).length;
-  const employeeCount = users.filter(u => !u.is_admin).length;
+  const adminCount = users?.filter(u => u.is_admin).length || 0;
+  const employeeCount = users?.filter(u => !u.is_admin).length || 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -228,7 +235,7 @@ const UserManagement = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
+            <div className="text-2xl font-bold">{users?.length || 0}</div>
             <p className="text-xs text-muted-foreground">
               Registered users
             </p>

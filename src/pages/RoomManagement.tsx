@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { apiService } from '@/lib/api';
+import { useRooms } from '@/hooks/useApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,24 +10,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Edit, Trash2, MapPin, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Mock room data
-const mockRoomsData = [
-  { id: 1, room_name: 'Conference Room A', capacity: 10 },
-  { id: 2, room_name: 'Meeting Room B', capacity: 6 },
-  { id: 3, room_name: 'Board Room', capacity: 15 },
-  { id: 4, room_name: 'Training Room', capacity: 20 },
-  { id: 5, room_name: 'Small Meeting Room', capacity: 4 },
-];
 
 const RoomManagement = () => {
-  const [rooms, setRooms] = useState(mockRoomsData);
+  const { data: rooms, loading, refetch } = useRooms();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<any>(null);
   const [newRoom, setNewRoom] = useState({ room_name: '', capacity: '' });
   const { toast } = useToast();
 
-  const handleAddRoom = () => {
+  const handleAddRoom = async () => {
     if (!newRoom.room_name.trim()) {
       toast({
         title: "Missing room name",
@@ -35,24 +29,31 @@ const RoomManagement = () => {
       return;
     }
 
-    const id = Math.max(...rooms.map(r => r.id)) + 1;
-    const room = {
-      id,
-      room_name: newRoom.room_name,
-      capacity: parseInt(newRoom.capacity) || 0,
-    };
-
-    setRooms(prev => [...prev, room]);
-    setNewRoom({ room_name: '', capacity: '' });
-    setIsAddDialogOpen(false);
-    
-    toast({
-      title: "Room added",
-      description: `${room.room_name} has been added successfully.`,
-    });
+    try {
+      const id = rooms ? Math.max(...rooms.map(r => r.id)) + 1 : 1;
+      await apiService.createRoom({
+        id,
+        room_name: newRoom.room_name,
+      });
+      
+      await refetch();
+      setNewRoom({ room_name: '', capacity: '' });
+      setIsAddDialogOpen(false);
+      
+      toast({
+        title: "Room added",
+        description: `${newRoom.room_name} has been added successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add room. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleEditRoom = () => {
+  const handleEditRoom = async () => {
     if (!editingRoom?.room_name.trim()) {
       toast({
         title: "Missing room name",
@@ -62,35 +63,49 @@ const RoomManagement = () => {
       return;
     }
 
-    setRooms(prev => 
-      prev.map(room => 
-        room.id === editingRoom.id 
-          ? { ...editingRoom, capacity: parseInt(editingRoom.capacity) || 0 }
-          : room
-      )
-    );
-    
-    setIsEditDialogOpen(false);
-    setEditingRoom(null);
-    
-    toast({
-      title: "Room updated",
-      description: `${editingRoom.room_name} has been updated successfully.`,
-    });
+    try {
+      await apiService.updateRoom(editingRoom.id, {
+        room_name: editingRoom.room_name,
+      });
+      
+      await refetch();
+      setIsEditDialogOpen(false);
+      setEditingRoom(null);
+      
+      toast({
+        title: "Room updated",
+        description: `${editingRoom.room_name} has been updated successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update room. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteRoom = (roomId: number) => {
-    const room = rooms.find(r => r.id === roomId);
-    setRooms(prev => prev.filter(room => room.id !== roomId));
-    
-    toast({
-      title: "Room deleted",
-      description: `${room?.room_name} has been deleted successfully.`,
-    });
+  const handleDeleteRoom = async (roomId: number) => {
+    try {
+      const room = rooms?.find(r => r.id === roomId);
+      await apiService.deleteRoom(roomId);
+      await refetch();
+      
+      toast({
+        title: "Room deleted",
+        description: `${room?.room_name} has been deleted successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete room. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const openEditDialog = (room: any) => {
-    setEditingRoom({ ...room, capacity: room.capacity.toString() });
+    setEditingRoom({ ...room, capacity: (room.capacity || 0).toString() });
     setIsEditDialogOpen(true);
   };
 
@@ -158,7 +173,7 @@ const RoomManagement = () => {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{rooms.length}</div>
+            <div className="text-2xl font-bold">{rooms?.length || 0}</div>
             <p className="text-xs text-muted-foreground">
               Conference rooms available
             </p>
@@ -172,7 +187,7 @@ const RoomManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {rooms.reduce((sum, room) => sum + room.capacity, 0)}
+              {rooms?.reduce((sum, room) => sum + (room.capacity || 0), 0) || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               People across all rooms
@@ -187,7 +202,7 @@ const RoomManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {rooms.length > 0 ? Math.round(rooms.reduce((sum, room) => sum + room.capacity, 0) / rooms.length) : 0}
+              {rooms && rooms.length > 0 ? Math.round(rooms.reduce((sum, room) => sum + (room.capacity || 0), 0) / rooms.length) : 0}
             </div>
             <p className="text-xs text-muted-foreground">
               People per room
@@ -218,10 +233,10 @@ const RoomManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rooms.map((room) => (
+                {rooms?.map((room) => (
                   <TableRow key={room.id}>
                     <TableCell className="font-medium">{room.room_name}</TableCell>
-                    <TableCell>{room.capacity} people</TableCell>
+                    <TableCell>{room.capacity || 0} people</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button
@@ -247,7 +262,7 @@ const RoomManagement = () => {
             </Table>
           </div>
 
-          {rooms.length === 0 && (
+          {(!rooms || rooms.length === 0) && !loading && (
             <div className="text-center py-8">
               <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium">No rooms found</h3>
