@@ -1,4 +1,4 @@
-const API_BASE_URL = '/practical-tanvi-6986153c661111f092518204c7dc2e0560/api';
+const API_BASE_URL = 'https://cc1fbde45ead-in-south-01.backstract.io/practical-tanvi-6986153c661111f092518204c7dc2e0560/api';
 
 export interface User {
   id: number;
