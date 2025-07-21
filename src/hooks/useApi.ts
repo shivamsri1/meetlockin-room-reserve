@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { apiService } from '@/lib/api';
+import { apiService, BookingsResponse, RoomsResponse, UsersResponse } from '@/lib/api';
 
 // Custom hook for fetching data with loading states
 export const useApi = <T>(apiCall: () => Promise<T>, dependencies: any[] = []) => {
@@ -27,15 +28,15 @@ export const useApi = <T>(apiCall: () => Promise<T>, dependencies: any[] = []) =
   return { data, loading, error, refetch: fetchData };
 };
 
-// Specific hooks for each API endpoint
+// Specific hooks for each API endpoint with correct return types
 export const useBookings = () => {
-  return useApi(() => apiService.getBookings());
+  return useApi<BookingsResponse>(() => apiService.getBookings());
 };
 
 export const useRooms = () => {
-  return useApi(() => apiService.getRooms());
+  return useApi<RoomsResponse>(() => apiService.getRooms());
 };
 
 export const useUsers = () => {
-  return useApi(() => apiService.getUsers());
+  return useApi<UsersResponse>(() => apiService.getUsers());
 };

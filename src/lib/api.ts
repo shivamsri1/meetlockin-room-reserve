@@ -1,3 +1,4 @@
+
 const API_BASE_URL = 'https://cc1fbde45ead-in-south-01.backstract.io/practical-tanvi-6986153c661111f092518204c7dc2e0560/api';
 
 export interface User {
@@ -10,7 +11,7 @@ export interface User {
 export interface Room {
   id: number;
   room_name: string;
-  capacity?: number; // Optional field for display purposes
+  capacity?: number;
 }
 
 export interface Booking {
@@ -23,6 +24,19 @@ export interface Booking {
   end_time: string;
   booked_by: string;
   approval_status?: string;
+}
+
+// API Response wrapper interfaces
+export interface BookingsResponse {
+  bookings_all: Booking[];
+}
+
+export interface RoomsResponse {
+  rooms_all: Room[];
+}
+
+export interface UsersResponse {
+  users_all: User[];
 }
 
 export interface CreateUserRequest {
@@ -90,7 +104,7 @@ class ApiService {
   }
 
   // Users
-  async getUsers(): Promise<User[]> {
+  async getUsers(): Promise<UsersResponse> {
     return this.request('/users/');
   }
 
@@ -118,7 +132,7 @@ class ApiService {
   }
 
   // Rooms
-  async getRooms(): Promise<Room[]> {
+  async getRooms(): Promise<RoomsResponse> {
     return this.request('/rooms/');
   }
 
@@ -153,7 +167,7 @@ class ApiService {
   }
 
   // Bookings
-  async getBookings(): Promise<Booking[]> {
+  async getBookings(): Promise<BookingsResponse> {
     return this.request('/bookings/');
   }
 
